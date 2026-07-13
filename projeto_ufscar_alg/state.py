@@ -27,6 +27,26 @@ def init_state():
         ]
     if 'proximo_id' not in st.session_state:
         st.session_state.proximo_id = 3
+    if 'preset_reset_count' not in st.session_state:
+        # Contador por máquina usado para "resetar" o selectbox de preset.
+        # Streamlit não permite mais escrever em st.session_state[key] de um
+        # widget já instanciado no mesmo run (mesmo antes de um st.rerun()).
+        # Em vez de tentar sobrescrever a chave, trocamos a chave do widget
+        # (incrementando esse contador) para que, no próximo run, ele nasça
+        # como um widget novo, já no valor padrão (placeholder).
+        st.session_state.preset_reset_count = {}
+
+
+def preset_widget_key(maquina_id):
+    """Gera a key atual do selectbox de preset de uma máquina (muda a cada reset)."""
+    n = st.session_state.preset_reset_count.get(maquina_id, 0)
+    return f"preset_{maquina_id}_{n}"
+
+
+def bump_preset_reset(maquina_id):
+    """Incrementa o contador de reset de uma máquina, forçando um widget novo."""
+    atual = st.session_state.preset_reset_count.get(maquina_id, 0)
+    st.session_state.preset_reset_count[maquina_id] = atual + 1
 
 
 def adicionar_maquina(preset_label=None):
