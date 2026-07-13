@@ -29,6 +29,8 @@ from state import (
     adicionar_maquina,
     remover_maquina,
     aplicar_preset,
+    preset_widget_key,
+    bump_preset_reset,
     PRESETS,
     PRESET_LABELS,
     PRESET_PLACEHOLDER,
@@ -163,13 +165,15 @@ for m in st.session_state.maquinas_lista:
         with row1_b:
             m["ativa"] = st.toggle("Ativa na linha", value=m["ativa"], key=f"ativa_{m['id']}")
         with row1_c:
-            # FIX: a key do selectbox é usada como flag "preset a aplicar".
-            # Antes, depois de aplicar o preset o app dava rerun sem resetar
-            # essa key -> a cada nova execução o mesmo preset era reaplicado
-            # e um novo rerun era disparado, gerando um loop de reruns
-            # (lentidão / trava / erro esporádico) e o seletor nunca voltava
-            # para "— manter valores —", travando na última escolha.
-            preset_key = f"preset_{m['id']}"
+            # FIX: versões recentes do Streamlit não permitem mais escrever em
+            # st.session_state[key] de um widget já instanciado no mesmo run
+            # (mesmo antes de um st.rerun()) — isso agora lança
+            # StreamlitAPIException. Em vez de tentar resetar o selectbox
+            # sobrescrevendo sua própria key, trocamos a key do widget
+            # (via preset_widget_key, que embute um contador por máquina).
+            # Assim, no próximo run, nasce um widget NOVO já no placeholder,
+            # sem mexer no estado do widget antigo.
+            preset_key = preset_widget_key(m["id"])
             preset_escolhido = st.selectbox(
                 "Aplicar perfil pronto",
                 options=[PRESET_PLACEHOLDER] + PRESET_LABELS,
@@ -177,7 +181,7 @@ for m in st.session_state.maquinas_lista:
             )
             if preset_escolhido != PRESET_PLACEHOLDER:
                 aplicar_preset(m["id"], preset_escolhido)
-                st.session_state[preset_key] = PRESET_PLACEHOLDER
+                bump_preset_reset(m["id"])
                 st.rerun()
 
         row2_a, row2_b, row2_c = st.columns(3)
